@@ -1,37 +1,49 @@
 # FTA Platform
 
-중소 수출기업을 위한 FTA 활용 통합 플랫폼.
+중소 화장품 수출기업의 FTA 활용 의사결정을 지원하는 통합 플랫폼. 초기 적용 시장은 베트남이다.
 
-## 목표 기능
+**HS 코드 판정은 여러 분석 모듈 중 하나이며, 프로젝트의 최종 목적은 HS 코드 예측 자체가 아니다.** 제품·BOM을 입력하면 HS 분류, 원산지 기준, 관세 및 비용, 공급망 리스크를 연계 분석해 FTA 활용 가능성과 경제성을 종합적으로 판단하는 것이 목표다.
 
-- 완제품 정보 입력
-- BOM 직접 입력 및 엑셀 업로드
-- 완제품 HS 코드 예측 모델 연동
-- 원재료 HS 코드 예측 모델 연동
-- CTH 원산지 기준 판별
-- RVC 부가가치 기준 판별
-- VNM 예측 모델 연동
-- 대체 원재료 추천 및 위험도 분석
-- FTA 활용 가능 여부 및 분석 결과 보고서
+## 주요 기능
 
-## 아키텍처
+- 기업·제품·BOM 입력 및 관리
+- 완제품 및 원재료 HS 코드 판정 모듈
+- 협정별 원산지 결정기준 조회 및 CTH/RVC 판정
+- VNM 변동성 및 공급망 리스크 분석
+- 대체 원재료 시나리오 비교
+- 관세 절감액·증빙비용·거래비용 분석
+- 통합 FTA 활용 의사결정 및 보고서
+
+## 기술 방향
 
 - Frontend: React
 - Backend: Python FastAPI
-- Data processing: Pandas
-- Database: 추후 SQLite 또는 PostgreSQL
-
-각 HS 코드 예측 모델과 VNM 모델은 독립적으로 개발·버전 관리하며, 백엔드의 adapter/service 계층을 통해 연결한다.
+- Data processing: Pandas / NumPy
+- Database: 초기 개발 단계에서 SQLite, 이후 PostgreSQL 검토
+- Model integration: 독립 모델 + adapter/service + workflow orchestration
 
 ## 개발 원칙
 
-- 기존 모델 학습 코드를 불필요하게 수정하지 않는다.
-- 모델별 입력·출력 계약을 명시한다.
-- 모델 미연결 상태에서는 mock 결과를 사용하고 실제 결과와 명확히 구분한다.
-- CTH와 RVC는 AI 예측과 구분되는 별도 판정 로직으로 구현한다.
-- 협정별 원산지 결정기준과 필요한 증빙이 확인되지 않으면 확정 판정을 내리지 않는다.
-- 대용량 모델 파일, 기업 기밀 BOM, 비밀키는 일반 Git 커밋에 포함하지 않는다.
+- 기존 모델 저장소와 학습 코드를 최대한 보존한다.
+- 각 모델을 공통 adapter 계약으로 연결한다.
+- 모델 출력, 규칙 기반 계산, Mock 결과를 명확히 구분한다.
+- CTH/RVC는 협정별 규칙과 근거 데이터에 기반해 계산한다.
+- 결과에는 입력, 데이터 버전, 계산 근거, 가정 및 누락 정보를 남긴다.
+- 모델 가중치, 임베딩, 기업 기밀 BOM, 비밀키는 Git에 커밋하지 않는다.
 
-## 개발 상태
+## 프로젝트 문서
 
-초기 저장소 설정 단계.
+- [Codex 개발 지침](AGENTS.md)
+- [전체 아키텍처](docs/architecture.md)
+- [기존 모델 연결 현황](docs/model-registry.md)
+- [완제품 HS 모델 어댑터 프로토타입](backend/models/hs_finished/README.md)
+
+## 기존 모델 저장소
+
+- 완제품 HS: https://github.com/lin1118-code/HS-complete-product
+- 원재료 HS: 저장소 확인 필요
+- VNM 분석: 저장소 확인 필요
+
+## 현재 상태
+
+통합 아키텍처 및 개별 모델 연결 기반을 구성하는 초기 단계. 개별 모듈의 실제 연동 여부는 model registry에서 확인한다.
