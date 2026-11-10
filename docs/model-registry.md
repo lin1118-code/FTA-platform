@@ -5,9 +5,19 @@ This file is the source of truth for model integration status. Update it only af
 | Module | Source repository | Current platform status | Notes |
 |---|---|---|---|
 | Finished-product HS | https://github.com/lin1118-code/HS-complete-product | Prototype adapter | Notebook 18 candidate: SBERT_product_plus_ruling_stopword |
-| Raw-material HS | To be supplied / confirm repository | Pending | Do not invent a source repository or model behavior |
+| Raw-material HS4 | https://github.com/davidsonny-sketch/fta-oda-hs4-model | Source inspected; integration pending | Notebook: `원재료 HS4 판정 모델 (최종).ipynb`; uses `HS4Final.one()` and `HS4Final.bom()`; pulls `00_setup.py`, `hs4_final.py`, `origin_check.py` and data from Google Drive at runtime. HS4 top-1~3 plus decision status; human review required for low-confidence/uncertain cases. Need resolve Drive/runtime data access before production adapter. |
 | VNM analysis | To be supplied / confirm repository | Pending | Clarify whether forecasting, volatility, or risk score is the intended output |
 | CTH/RVC origin evaluation | Platform rules engine | Pending | Rules-based calculation, not an ML model |
+
+## Raw-material HS4 model findings
+
+- Source repository default branch: `main`; inspected tree at commit `cff8564b0a3da4db4b009e57df77feb09fe13d10`.
+- The repository contains a README and one Colab notebook; it does not contain the runtime Python modules or model data.
+- Notebook setup authenticates Google Colab user access, reads `00_setup.py` from a Google Drive folder, then downloads `origin_check.py` and `hs4_final.py` and initializes `HS4Final('/content/rawmodel')`.
+- Public notebook interface: `model.one(name)` for one ingredient and `model.bom(composition)` for a comma-separated ingredient list.
+- Output fields include input name, matched Korean name, matched English INCI, name matching status, HS4 ranks 1–3, and decision status.
+- Notebook reports: cross-validation 605 items accuracy 0.896 / macro-F1 0.782 / top-3 0.954; holdout A 92 accuracy 0.837 / macro-F1 0.611 / top-3 0.891; actual ingredient test B 110 accuracy 0.836 / macro-F1 0.752 / top-3 0.882. The notebook itself notes some evaluation optimism and human review for `확인 필요` cases. These are owner-reported notebook results, not independently reproduced here.
+- Important runtime dependency: RDKit installation, Google Colab authentication, Google Drive API, plus the private/shared Drive data files. Do not assume this can run locally or in a server until access and deployment packaging are clarified.
 
 ## Integration checklist per model
 
