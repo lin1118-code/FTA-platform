@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import quote
 import json
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ def remove_stopword_morphs(text, kiwi):
 
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    df = pd.read_csv(BASE_URL + DATA_FILE.replace(" ", "%20"), encoding="utf-8-sig").fillna("")
+    df = pd.read_csv(BASE_URL + quote(DATA_FILE, safe=""), encoding="utf-8-sig").fillna("")
     required = INPUT_COLUMNS + [TARGET, SUMMARY]
     missing = [col for col in required if col not in df.columns]
     if missing:
