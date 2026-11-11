@@ -1,18 +1,25 @@
-"""원재료 HS4 모델 어댑터 — 모델 코드는 복사하지 않고 원본 저장소를 그대로 불러옴
+"""원재료 HS4 모델 어댑터(플러그인) — 모델 코드는 복사하지 않고 원본 저장소를 그대로 불러옴
 
-원본: https://github.com/davidsonny-sketch/fta-oda-hs4-model (브랜치·커밋은 SOURCE_REF, fetch_source.sh로 받음)
+원본: https://github.com/davidsonny-sketch/fta-oda-hs4-model (커밋은 SOURCE_REF, fetch_source.sh로 받음)
 원본 위치: 환경변수 RAW_HS4_SOURCE_DIR (기본: <플랫폼 루트>/external/fta-oda-hs4-model)
-출력 계약: 원료마다 HS4 1~3순위, 판정상태, 사람 확인 필요 여부, 이름 찾기 결과
+출력: docs/architecture.md 4장의 표준 봉투(module·status·source·model_name·model_version·
+      input_summary·result·evidence·warnings)
 """
 import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+MODULE = "raw_material_hs"
+MODEL_NAME = "raw-material HS4 v2 (memory + HS nomenclature lexicon + RDKit structure rule + name model)"
 SOURCE_REPO = "https://github.com/davidsonny-sketch/fta-oda-hs4-model"
-SOURCE_REF = "ac8de2faeababe94af4160a22ed98a871de43cc9"   # 브랜치 hyunsoo/final-model-v2 (main 병합 전)
+SOURCE_REF = "8f897de6f90bbad866b834a4f82c090d1038d684"   # main (PR #2 병합, v2)
 SOURCE_DIR = Path(os.environ.get("RAW_HS4_SOURCE_DIR", ROOT / "external" / "fta-oda-hs4-model"))
 NOTICE = "원료명 기반 HS 4단위 추정 후보이며, '확인 필요' 원료와 최종 HS 코드는 공식 품목분류 확인이 필요합니다."
+
+
+def source_available(source_dir: Path = SOURCE_DIR) -> bool:
+    return (Path(source_dir) / "src" / "standalone.py").exists()
 
 
 def _review_needed(state: str) -> bool:
@@ -36,16 +43,41 @@ def normalize(row: dict) -> dict:
     }
 
 
+def _evidence(item: dict) -> dict:
+    """판정 근거: 어떤 단계가 결정했는지(판정상태)와 이름 찾기 결과"""
+    return {"input_name": item["input_name"], "decided_by": item["status"], "name_match": item["name_match"]}
+
+
+def _warnings(items: list) -> list:
+    w = [f"'{i['input_name']}': {i['status']}" for i in items if i["review_required"]]
+    return w + [NOTICE]
+
+
+def envelope(input_summary: dict, result: dict, items: list) -> dict:
+    return {
+        "module": MODULE,
+        "status": "success",
+        "source": "real_model",
+        "model_name": MODEL_NAME,
+        "model_version": f"{SOURCE_REPO}@{SOURCE_REF}",
+        "input_summary": input_summary,
+        "result": result,
+        "evidence": [_evidence(i) for i in items],
+        "warnings": _warnings(items),
+    }
+
+
 class RawMaterialHS4Adapter:
     def __init__(self, source_dir: Path = SOURCE_DIR, model=None):
         """model을 넘기면 그것을 씀(시험용). 아니면 원본 저장소의 src/standalone.py로 불러옴"""
         if model is None:
-            src = Path(source_dir) / "src"
-            if not (src / "standalone.py").exists():
+            if not source_available(source_dir):
                 raise FileNotFoundError(
-                    f"원재료 모델 원본이 없습니다: {src}. backend/models/hs_raw/fetch_source.sh를 먼저 실행하세요.")
-            if str(src) not in sys.path:
-                sys.path.insert(0, str(src))
+                    f"원재료 모델 원본이 없습니다: {Path(source_dir) / 'src'}. "
+                    "backend/models/hs_raw/fetch_source.sh를 먼저 실행하세요.")
+            src = str(Path(source_dir) / "src")
+            if src not in sys.path:
+                sys.path.insert(0, src)
             from standalone import load_model
             model = load_model()
         self.model = model
@@ -54,17 +86,15 @@ class RawMaterialHS4Adapter:
         name = (name or "").strip()
         if not name:
             raise ValueError("원료명을 입력해야 합니다.")
-        return {"source": {"repository": SOURCE_REPO, "ref": SOURCE_REF}, "result": normalize(self.model.one(name)), "notice": NOTICE}
+        item = normalize(self.model.one(name))
+        return envelope({"name": name}, item, [item])
 
     def predict_bom(self, ingredients: str) -> dict:
         if not (ingredients or "").strip():
             raise ValueError("성분표(쉼표로 구분한 원료명)를 입력해야 합니다.")
-        df = self.model.bom(ingredients)
-        rows = [normalize(r) for r in df.to_dict("records")]
-        return {
-            "source": {"repository": SOURCE_REPO, "ref": SOURCE_REF},
-            "items": rows,
-            "summary": {"count": len(rows), "review_required": sum(r["review_required"] for r in rows),
-                        "semi_product_suspected": sum(r["semi_product_suspected"] for r in rows)},
-            "notice": NOTICE,
-        }
+        items = [normalize(r) for r in self.model.bom(ingredients).to_dict("records")]
+        summary = {"count": len(items),
+                   "review_required": sum(i["review_required"] for i in items),
+                   "semi_product_suspected": sum(i["semi_product_suspected"] for i in items)}
+        return envelope({"ingredients": ingredients, "count": len(items)},
+                        {"items": items, "summary": summary}, items)

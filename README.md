@@ -52,6 +52,13 @@
 ## 변경 기록
 <!-- 브랜치마다 항목을 추가(최신이 위). main에는 PR로만 합침 -->
 
+### 2026-11-11 · `hyunsoo/raw-material-adapter` (2차) · 상태: 작업 중 (현수)
+- **무엇을**: 원재료 모델을 플랫폼 플러그인 규격에 맞춤 — 출력을 `docs/architecture.md` 4장 표준 봉투(module·status·source·model_name·model_version·input_summary·result·evidence·warnings)로 바꾸고, 모듈 목록 API `GET /api/modules` 추가, 원본 모델을 원재료 저장소 `main`의 v2 병합 커밋 `8f897de`로 고정
+- **왜**: 플랫폼의 다른 모듈(원산지 규칙 엔진·보고서)이 모델마다 다른 형식이 아니라 같은 봉투로 결과·근거·버전을 받게 하고, 어떤 모델이 연결됐는지 한 곳에서 확인하기 위해
+- **바뀐 파일**: 수정 `backend/models/hs_raw/adapter.py`(표준 봉투, SOURCE_REF), `backend/models/hs_raw/README.md`, `backend/main.py`(모듈 라우터 등록 2줄), `tests/test_hs_raw.py`, `docs/model-registry.md` / 신규 `backend/models/registry.py`, `backend/routers/modules.py`
+- **검증**: `pytest tests/test_hs_raw.py` — 원본 없을 때 6 통과·1 건너뜀, `fetch_source.sh` 후 7 통과. 성분표 5개(정제수 2853, 글리세린 2905, 나이아신아마이드 2936, 에탄올 2207, 수분크림 베이스 → 확인 필요) API 확인
+- **영향**: 완제품 모델(`hs_finished`) 코드는 바꾸지 않음. 원재료 API 응답 형식이 1차와 달라짐(아직 main 병합 전이라 사용하는 곳 없음)
+
 ### 2026-11-11 · `hyunsoo/raw-material-adapter` · 상태: 작업 중 (현수)
 - **무엇을**: 원재료 HS4 모델 어댑터와 API 추가 — `POST /api/hs/raw/predict`(원료 1개), `POST /api/hs/raw/bom`(성분표)
 - **왜**: 원재료 모델을 플랫폼에 연결해 원산지(CTH) 판정에 원료 HS 후보를 공급하기 위해

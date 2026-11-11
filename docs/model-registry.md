@@ -5,7 +5,7 @@ This file is the source of truth for model integration status. Update it only af
 | Module | Source repository | Current platform status | Notes |
 |---|---|---|---|
 | Finished-product HS | https://github.com/lin1118-code/HS-complete-product | Prototype adapter | Notebook 18 candidate: SBERT_product_plus_ruling_stopword |
-| Raw-material HS4 | https://github.com/davidsonny-sketch/fta-oda-hs4-model | Adapter on branch `hyunsoo/raw-material-adapter` (not merged) | Source pinned to `ac8de2f` on branch `hyunsoo/final-model-v2` (v2: HS nomenclature lexicon). Runs without Google Drive via `src/standalone.py` + `data/`. API `/api/hs/raw/predict`, `/api/hs/raw/bom`. Outputs HS4 top-1~3, status, review_required. |
+| Raw-material HS4 | https://github.com/davidsonny-sketch/fta-oda-hs4-model | Integrated adapter on branch `hyunsoo/raw-material-adapter` (not merged) | Source pinned to `8f897de` on source `main` (v2: HS nomenclature lexicon). Runs without Google Drive via `src/standalone.py` + `data/`. API `/api/hs/raw/predict`, `/api/hs/raw/bom`. Outputs HS4 top-1~3, status, review_required. |
 | VNM analysis | To be supplied / confirm repository | Pending | Clarify whether forecasting, volatility, or risk score is the intended output |
 | CTH/RVC origin evaluation | Platform rules engine | Pending | Rules-based calculation, not an ML model |
 
@@ -24,8 +24,11 @@ This file is the source of truth for model integration status. Update it only af
 - Integration method: thin adapter that imports the source repository from `external/fta-oda-hs4-model` (fetched by `backend/models/hs_raw/fetch_source.sh` at the pinned commit; `external/` is git-ignored). No model code or data copied into the platform.
 - The source branch adds `data/` (sheet1 export with per-row label source, MFDS ingredient DB, PubChem structures, label corrections) and `src/standalone.py`, removing the Colab/Drive runtime dependency noted above.
 - Owner-reported v2 metrics (source `validation/README.md`): held-out design split 291 rows accuracy 0.864 / macro-F1 0.712; test A 92 rows 0.870 / 0.658; test B 110 actual ingredients 0.900 / 0.843 (Colab).
-- Tests: `tests/test_hs_raw.py` (contract tests with a fake model + real-model known cases when `external/` exists). Executed locally: 6 passed.
-- Pending: merge source branch to `main` and re-pin `SOURCE_REF` to that commit; decide whether CTH evaluation consumes `hs4_candidates` directly.
+- Tests: `tests/test_hs_raw.py` (envelope contract tests with a fake model, module registry, real-model known cases when `external/` exists).
+- Source v2 merged to source `main` (`8f897de`); `SOURCE_REF` re-pinned to it.
+- Output uses the normalized envelope from `docs/architecture.md` §4 (`source: real_model`, `model_version: repo@commit`, per-ingredient `evidence`, review items in `warnings`).
+- Live status: `GET /api/modules` (no model import; reports `integrated` / `source_missing`).
+- Pending: decide whether CTH evaluation consumes `hs4_candidates` directly.
 
 ## Integration checklist per model
 
