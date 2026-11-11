@@ -47,3 +47,14 @@
 ## 현재 상태
 
 통합 아키텍처 및 개별 모델 연결 기반을 구성하는 초기 단계. 개별 모듈의 실제 연동 여부는 model registry에서 확인한다.
+
+
+## 변경 기록
+<!-- 브랜치마다 항목을 추가(최신이 위). main에는 PR로만 합침 -->
+
+### 2026-11-11 · `hyunsoo/raw-material-adapter` · 상태: 작업 중 (현수)
+- **무엇을**: 원재료 HS4 모델 어댑터와 API 추가 — `POST /api/hs/raw/predict`(원료 1개), `POST /api/hs/raw/bom`(성분표)
+- **왜**: 원재료 모델을 플랫폼에 연결해 원산지(CTH) 판정에 원료 HS 후보를 공급하기 위해
+- **바뀐 파일**: 신규 `backend/models/hs_raw/`(adapter.py, fetch_source.sh, README.md), `backend/routers/hs_raw.py`, `tests/test_hs_raw.py` / 수정 `backend/main.py`(라우터 등록 2줄), `requirements.txt`(scikit-learn·scipy·rdkit·pytest·httpx), `.gitignore`(external/), `docs/model-registry.md`(원재료 모델 상태), `README.md`(이 변경 기록)
+- **검증**: `pytest tests/test_hs_raw.py` 6개 통과(계약 시험 + 실제 모델 알려진 사례: Ethanol 2207, Glycerol 2905, 나이아신아마이드 2936, 정제 대두 경화유 1516, Bees wax 1521)
+- **영향**: 완제품 모델(`hs_finished`) 코드는 바꾸지 않음. 원재료 모델은 원본 저장소를 고정 커밋으로 받아 씀(코드 복사 없음)
