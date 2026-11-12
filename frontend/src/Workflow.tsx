@@ -252,27 +252,41 @@ function OriginReview(p: any) {
     const assess = (chosen: Candidate[]) => { const ids = new Set(chosen.map((x: Candidate) => x.id)); const remaining = (bom as BomLine[]).filter((line, index) => domestic(line, index) ? false : !ids.has(String(line.line_id ?? line.rvc_material_id ?? lineKey(line, index)))); const known = draft.hs_code_confirmed && productHs4.length === 4 && remaining.every(line => line.hs_code_confirmed && hs4(line).length === 4); const cthAfter = known ? remaining.every(line => hs4(line) !== productHs4) : undefined; const recovered = chosen.reduce((sum: number, x: Candidate) => sum + x.cost, 0); const rvcAfter = (fob - Math.max(0, vnm - recovered)) / fob * 100; return { qualifies: cthAfter === true || rvcAfter >= 40, cthAfter, rvcAfter, excess: rvcAfter >= 40 ? rvcAfter - 40 : 0 }; };
     for (let size = 1; size <= unknown.length; size++) { const valid: Array<{ items: Candidate[]; outcome: ReturnType<typeof assess> }> = []; const visit = (at: number, chosen: Candidate[]) => { if (chosen.length === size) { const outcome = assess(chosen); if (outcome.qualifies) valid.push({ items: chosen, outcome }); return; } for (let i = at; i <= unknown.length - size + chosen.length; i++) visit(i + 1, [...chosen, unknown[i]]); }; visit(0, []); if (valid.length) return valid.sort((a, b) => a.outcome.excess - b.outcome.excess || a.items.map(x => x.id).join("|").localeCompare(b.items.map(x => x.id).join("|")))[0]; } return null;
   })();
-  return <div className="stack">
-    <Card>
-      <div className="card-head"><div><p className="eyebrow">FTA PRODUCT SPECIFIC RULE</p><h3>{product?.product_name ?? draft.product_name} - HS {draft.hs_code ?? "Not confirmed"}</h3></div><button className="secondary" onClick={() => void runCostSimulation()}><RefreshCw size={15}/> Refresh</button></div>
-      {officialPsr ? rows.map((rule: Record<string, any>, i: number) => <div className="rule-row" key={i}><b>{String(rule.criterion)}</b><span>{rule.criterion === "RVC" ? `RVC ${String(rule.rvc_threshold_percent)}%` : `CTH ${String(rule.cth_digits)}-digit`}</span><StatusBadge status="succeeded"/></div>) : <p className="muted-copy">{copy.noPsr}</p>}
-      <div className="rule-row"><b>{copy.userRule}</b><span>CTH HS4 OR RVC 40%</span><StatusBadge status="succeeded"/></div>
-      <p className="muted-copy">KOREA_VIETNAM - User-provided cosmetics criteria - Separate from official PSR database.</p>
+  return <div className="stack origin-review">
+    <Card className="origin-verdict-card">
+      <div className="origin-verdict-heading">
+        <div><p className="eyebrow">최종 판정</p><h3>{product?.product_name ?? draft.product_name} · HS {draft.hs_code ?? "미확정"}</h3></div>
+        <button className="secondary" onClick={() => void runCostSimulation()}><RefreshCw size={15}/> 계산 갱신</button>
+      </div>
+      <div className={`origin-final-status ${combined === undefined ? "is-pending" : combined ? "is-pass" : "is-fail"}`}>
+        <div><span>{combined === undefined ? "판정 보류" : combined ? "시뮬레이션 기준 충족" : "시뮬레이션 기준 미충족"}</span><small>사용자 제공 기준 시뮬레이션 · {officialPsr ? "공식 PSR은 별도 표시" : "공식 PSR 미검증"}</small></div>
+      </div>
+      <div className="origin-rule-source">
+        {officialPsr ? <><strong>검증된 PSR 데이터 (참고)</strong>{rows.map((rule: Record<string, any>, i: number) => <span key={i}>{String(rule.criterion)} · {rule.criterion === "RVC" ? `RVC ${String(rule.rvc_threshold_percent)}%` : `CTH ${String(rule.cth_digits)}단위`}</span>)}<strong>사용자 제공 기준 시뮬레이션</strong><span>CTH HS4 또는 RVC 40% · 공식 PSR의 판정 적용과 별도입니다.</span></> : <><strong>사용자 제공 기준 시뮬레이션</strong><span>KOREA_VIETNAM · 화장품 분석 기준: CTH HS4 또는 RVC 40%</span><span>공식 PSR 데이터가 검증되지 않아 법적 판정을 대신하지 않습니다.</span></>}
+      </div>
     </Card>
-    <div className="grid-2">
-      <Card><p className="eyebrow">RULE ASSESSMENT</p><h3>CTH / RVC / Combined</h3>
-        <div className="rule-row"><b>CTH HS4</b><strong>{cth === undefined ? copy.pending : cth ? copy.pass : copy.fail}</strong><span>{cth === undefined ? copy.needsHs : `${nonOrigin.length} non-origin or unknown materials compared`}</span></div>
-        <div className="rule-row"><b>RVC 40%</b><strong>{percent(rvc)}</strong><span>{rvcPass === undefined ? copy.needsValue : rvcPass ? copy.pass : `Short by ${Math.max(0, 40 - rvc!).toFixed(2)}%p`}</span></div>
-        <div className="rule-row"><b>OR</b><strong>{combined === undefined ? copy.pending : combined ? "Scenario criterion met" : "Scenario criterion not met"}</strong><span>Either CTH or RVC is sufficient</span></div>
-        <p className="muted-copy">{copy.conservative}</p>
+
+    <div className="origin-check-grid">
+      <Card className="origin-check-card"><div className="origin-check-title"><div><p className="eyebrow">품목분류변경</p><h3>CTH · HS4</h3></div><span className={`origin-check-state ${cth === undefined ? "is-pending" : cth ? "is-pass" : "is-fail"}`}>{cth === undefined ? "확인 보류" : cth ? "충족" : "미충족"}</span></div>
+        <p className="origin-check-reason">{cth === undefined ? copy.needsHs : cth ? "비원산지 및 미상 재료의 HS4가 완제품 HS4와 모두 다릅니다." : "완제품 HS4와 같은 비원산지 또는 미상 재료가 있습니다."}</p>
+        <div className="origin-check-meta"><span>완제품 HS4</span><strong>{productHs4 || "미확정"}</strong><span>비원산지·미상 재료</span><strong>{nonOrigin.length}개</strong></div>
       </Card>
-      <Card><p className="eyebrow">ORIGIN EVIDENCE IMPACT</p><h3>{copy.evidence}</h3>
-        {unknown.length ? unknown.map((x: Candidate) => <div className="scenario-row" key={x.id}><span><b>{x.line.material_name || "Raw material"}</b><small>{won(x.cost)} - RVC +{fob ? (x.cost / fob * 100).toFixed(2) : "-"}%p{hs4(x.line) === productHs4 && productHs4 ? " - May improve CTH if domestic origin is recognized" : ""}</small></span></div>) : <p className="muted-copy">{copy.noTargets}</p>}
-        {recommendation ? <div className="recommended-box"><b>{copy.minSet} - {recommendation.items.length}</b>{recommendation.items.map((x: Candidate) => <p key={x.id}>{x.line.material_name} - {won(x.cost)} - +{(x.cost / (fob || 1) * 100).toFixed(2)}%p</p>)}<p>RVC {recommendation.outcome.rvcAfter.toFixed(2)}% - {recommendation.outcome.cthAfter ? "CTH" : "RVC"} {copy.pass}</p></div> : combined === true ? <p className="muted-copy">{copy.already}</p> : unknown.length ? <p className="warning-copy">{copy.noCombo}</p> : null}
-        {costResult?.rvc?.warnings?.length ? <p className="muted-copy">{costResult.rvc.warnings.join(" ")}</p> : null}
+      <Card className="origin-check-card"><div className="origin-check-title"><div><p className="eyebrow">역내부가가치</p><h3>RVC</h3></div><span className={`origin-check-state ${rvcPass === undefined ? "is-pending" : rvcPass ? "is-pass" : "is-fail"}`}>{rvcPass === undefined ? "확인 보류" : rvcPass ? "충족" : "미충족"}</span></div>
+        <div className="origin-rvc-values"><div><span>현재 RVC</span><strong>{percent(rvc)}</strong></div><div><span>기준</span><strong>40%</strong></div><div><span>기준 대비</span><strong className={rvc == null ? "" : rvc >= 40 ? "text-pass" : "text-fail"}>{rvc == null ? "확인 필요" : `${rvc >= 40 ? "+" : "−"}${Math.abs(rvc - 40).toFixed(2)}%p`}</strong></div></div>
+        <div className="origin-rvc-track" role="progressbar" aria-label="RVC 진행률" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0, Math.min(100, rvc ?? 0))}><span style={{ width: `${Math.max(0, Math.min(100, rvc ?? 0))}%` }}/><i style={{ left: "40%" }}/></div>
+        <p className="origin-check-reason">{rvc == null ? copy.needsValue : rvc >= 40 ? "사용자 제공 시뮬레이션 기준 40% 이상입니다." : `기준 충족까지 ${(40 - rvc).toFixed(2)}%p 부족합니다.`}</p>
       </Card>
     </div>
-    <Card><div className="card-head"><div><p className="eyebrow">INTEGRATED ANALYSIS</p><h3>Integrated analysis</h3></div><button className="primary" disabled={!product || busy} onClick={() => void runIntegratedAnalysis()}><Sparkles size={16}/> Run analysis</button></div><p className="muted-copy">{copy.legal} - FOB {won(selectedFob)} - BOM {bom.length}</p>{analysis && <StatusBadge status={analysis.status}/>}</Card>
+
+    <Card className="origin-combination-card"><p className="eyebrow">종합 판정 근거</p><h3>CTH 또는 RVC 40%</h3><p>{combined === undefined ? "필요한 HS4 또는 FOB·BOM 금액 정보가 확인되지 않아 종합 판정을 보류합니다." : combined ? `OR 조건에 따라 ${cth === true && rvcPass === true ? "CTH와 RVC가 모두" : cth === true ? "CTH가" : "RVC가"} 사용자 제공 시뮬레이션 기준을 충족합니다.` : "CTH와 RVC가 모두 기준에 미달하여 사용자 제공 시뮬레이션 기준을 충족하지 못합니다."}</p><small>원산지 미상 재료는 기본적으로 비원산지로 계산합니다. 국내산 인정은 원산지 시나리오에서만 가정하며 실제 BOM 상태는 바뀌지 않습니다.</small></Card>
+
+    {combined !== true && unknown.length > 0 && <Card className="origin-evidence-card"><p className="eyebrow">원산지 증빙 보완</p><h3>{recommendation ? copy.minSet : copy.evidence}</h3>
+      {recommendation ? <><p className="muted-copy">증빙 대상 재료가 적은 조합을 우선 추천합니다.</p>{recommendation.items.map((x: Candidate) => <div className="origin-evidence-row" key={x.id}><span><strong>{x.line.material_name || "원재료"}</strong><small>투입금액 {won(x.cost)} · RVC 개선 예상 +{fob ? (x.cost / fob * 100).toFixed(2) : "0.00"}%p</small></span><span className="status status-success">추천</span></div>)}<div className="recommended-box"><strong>조합 적용 예상 RVC {recommendation.outcome.rvcAfter.toFixed(2)}%</strong><p>{recommendation.outcome.cthAfter ? "CTH" : "RVC"} 기준으로 충족 가능성이 있습니다. 실제 인정 여부는 적격 증빙과 규칙 확인이 필요합니다.</p></div></> : <><p className="warning-copy">{combined === undefined ? "판정 입력을 확인할 수 없어 추천 조합을 계산하지 않았습니다." : copy.noCombo}</p>{unknown.map((x: Candidate) => <div className="origin-evidence-row" key={x.id}><span><strong>{x.line.material_name || "원재료"}</strong><small>투입금액 {won(x.cost)} · RVC 개선 예상 +{fob ? (x.cost / fob * 100).toFixed(2) : "0.00"}%p</small></span></div>)}</>}
+    </Card>}
+
+    <details className="origin-calculation-details"><summary>FOB / VNM / RVC 상세 계산 보기</summary><div className="origin-detail-grid"><div><span>적용 FOB</span><strong>{won(fob)}</strong></div><div><span>현재 VNM 추정</span><strong>{won(vnm)}</strong></div><div><span>현재 RVC</span><strong>{percent(rvc)}</strong></div><div><span>계산식</span><strong>(FOB − VNM) ÷ FOB × 100</strong></div></div>{costResult?.rvc?.warnings?.length ? <p className="warning-copy">{costResult.rvc.warnings.join(" ")}</p> : null}</details>
+
+    <Card className="origin-analysis-action"><div className="card-head"><div><p className="eyebrow">통합 분석</p><h3>제품 분석 결과 저장</h3></div><button className="primary" disabled={!product || busy} onClick={() => void runIntegratedAnalysis()}><Sparkles size={16}/> 통합 분석 실행</button></div><p className="muted-copy">FOB {won(selectedFob)} · BOM {bom.length}개</p>{analysis && <StatusBadge status={analysis.status}/>}</Card>
   </div>;
 }
 

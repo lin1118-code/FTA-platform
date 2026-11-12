@@ -108,3 +108,18 @@ Phase 5: add tariff/cost/risk/scenario orchestration.
 Phase 6: frontend workflow, integrated report, and end-to-end tests.
 
 Do not assume that every module is already available. Maintain a registry showing integrated, prototype, pending, or mock status.
+
+## 8. Initial backend foundation
+
+The initial backend now separates:
+
+- `backend/schemas/`: shared product, BOM, rule, analysis, and model-run contracts.
+- `backend/models/registry.py` and `backend/models/adapters/`: model metadata, input validation, normalized run status, and adapter invocation. The existing finished-product retriever remains in place and is called through a thin adapter.
+- `backend/services/`: SQLite persistence, analysis orchestration, and conservative origin-rule evaluation.
+- `backend/routers/`: API endpoints; the legacy finished-HS route remains available.
+
+SQLite stores product/BOM records, agreement rules, and analysis snapshots. Configure `FTA_PLATFORM_DB` to choose another database file. The default local data directory is ignored by Git.
+
+Current API routes are `GET /api/models`, `POST /api/products`, `GET /api/products/{product_id}`, `PUT /api/products/{product_id}/bom`, `POST /api/models/{module}/run`, `POST /api/agreement-rules`, `GET /api/agreement-rules`, `POST /api/analyses`, and `GET /api/analyses/{analysis_id}`. Rules submitted through the initial API are always stored as unverified; there is no trusted rule-authoring workflow yet. Thus CTH/RVC outcomes remain `insufficient_information` until verified source data and required inputs are available.
+
+Tariff/cost, supply-chain risk, and alternative-material scenario stages are included in analysis status and explicitly return `not_connected`; this backend foundation does not invent those results. Analysis execution is synchronous in this first version.

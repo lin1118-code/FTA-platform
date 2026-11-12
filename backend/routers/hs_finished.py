@@ -1,7 +1,7 @@
-from functools import lru_cache
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from backend.models.hs_finished.retriever import FinishedProductHSRetriever
+from backend.models.registry import model_registry
+from backend.schemas.platform import RunStatus
 
 router = APIRouter(prefix="/api/hs/finished", tags=["Finished Product HS"])
 
@@ -13,20 +13,18 @@ class FinishedProductInput(BaseModel):
     intended_use: str = ""
     top_k: int = 3
 
-@lru_cache(maxsize=1)
-def get_retriever():
-    return FinishedProductHSRetriever()
-
 @router.post("/predict")
 def predict_finished_hs(payload: FinishedProductInput):
-    product = {
-        "Product Name": payload.product_name,
-        "Main Ingredients (KR)": payload.ingredients_kr,
-        "Main Ingredients (EN)": payload.ingredients_en,
-        "Product Form and Packaging": payload.form_packaging,
-        "Intended Use": payload.intended_use,
-    }
-    try:
-        return get_retriever().predict(product, payload.top_k)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    result = model_registry.run("finished_product_hs", payload.dict())
+    if result.status == RunStatus.FAILED:
+        message = "; ".join(result.warnings)
+        is_input_error = any(
+            warning.startswith("입력 검증 실패:")
+            or "제품명, 성분, 형태·포장, 용도 중 하나 이상" in warning
+            for warning in result.warnings
+        )
+        code = 400 if is_input_error else 503
+        raise HTTPException(status_code=code, detail=message)
+    if result.status != RunStatus.SUCCEEDED:
+        raise HTTPException(status_code=503, detail="완제품 HS 모델을 실행할 수 없습니다.")
+    return result.result
