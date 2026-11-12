@@ -148,7 +148,7 @@ export function FobEvidencePanel({ product, bom, inputs, setInputs }: Props) {
   const cthPass = recommendation?.rule_context?.cth_pass;
 
   return <Card className="fob-evidence-panel">
-    <div className="card-head"><div><p className="eyebrow">FOB & ORIGIN SCENARIO</p><h3>FOB 비용 시뮬레이터 · 원산지 증빙 확보 추천</h3></div><StatusBadge status={simulationPending ? "running" : recommendation?.status ?? "insufficient_information"}/></div>
+    <div className="card-head"><div><p className="eyebrow">FOB 및 원산지 시나리오</p><h3>FOB 비용 시뮬레이터 · 원산지 증빙 확보 추천</h3></div><StatusBadge status={simulationPending ? "running" : recommendation?.status ?? "insufficient_information"}/></div>
     <p className="muted-copy">비용 변경은 가상 시뮬레이션입니다. 체크박스는 실제 BOM 원산지 상태를 바꾸지 않으며, 법적 판정에는 확인된 협정 규칙과 증빙이 필요합니다.</p>
     <div className="simulator-grid">
       <CostControl label="제조비" value={inputs.manufacturing} max={Math.max(1000000, selection.materialTotal * 2)} onChange={value => update("manufacturing", value)}/>
@@ -156,7 +156,7 @@ export function FobEvidencePanel({ product, bom, inputs, setInputs }: Props) {
       <CostControl label="운송비" value={inputs.freight} max={Math.max(1000000, selection.materialTotal * 2)} onChange={value => update("freight", value)}/>
       <CostControl label="기타 비용" value={inputs.other} max={Math.max(1000000, selection.materialTotal * 2)} onChange={value => update("other", value)}/>
       <CostControl label="이윤" value={inputs.profit} max={Math.max(1000000, selection.materialTotal * 2)} onChange={value => update("profit", value)}/>
-      <label className="field actual-fob"><span>실거래 FOB (KRW)</span><input type="number" min="0" step="1000" value={inputs.actualFob ?? product?.fob_value ?? ""} onChange={event => update("actualFob", event.target.value === "" ? undefined : Math.max(0, Number(event.target.value)))}/></label>
+      <label className="field actual-fob"><span>실거래 FOB (원)</span><input type="number" min="0" step="1000" value={inputs.actualFob ?? product?.fob_value ?? ""} onChange={event => update("actualFob", event.target.value === "" ? undefined : Math.max(0, Number(event.target.value)))}/></label>
     </div>
     <label className="check"><input type="checkbox" checked={inputs.freightIncluded} onChange={event => update("freightIncluded", event.target.checked)}/> 운송비를 FOB에 포함</label>
     <label className="check"><input type="checkbox" checked={inputs.useActualFob} onChange={event => update("useActualFob", event.target.checked)}/> 확정된 실거래 FOB 사용 (해제 시 비용 추정 FOB 사용)</label>
@@ -165,10 +165,10 @@ export function FobEvidencePanel({ product, bom, inputs, setInputs }: Props) {
       <div><span>비용 기반 예상 FOB</span><strong>{won(estimatedFob)}</strong></div>
       <div><span>{inputs.useActualFob ? "계산 기준: 실거래 FOB" : "계산 기준: 추정 FOB"}</span><strong>{won(selection.value)}</strong></div>
     </div>
-    {(!bomComplete || selection.value === undefined || selection.value <= 0) && <p className="warning-copy">{!bomComplete ? "모든 원재료의 KRW 구매단가가 있어야 RVC를 계산할 수 있습니다." : "FOB가 0 이하입니다. 양수 FOB를 입력해야 RVC 계산을 진행합니다."}</p>}
+    {(!bomComplete || selection.value === undefined || selection.value <= 0) && <p className="warning-copy">{!bomComplete ? "모든 원재료의 원화 구매단가가 있어야 RVC를 계산할 수 있습니다." : "FOB가 0 이하입니다. 양수 FOB를 입력해야 RVC 계산을 진행합니다."}</p>}
     <div className="rvc-live"><strong>현재 RVC</strong><b>{localRvc === undefined ? "계산 대기" : `${localRvc.toFixed(2)}%`}</b><span>RVC = (FOB − VNM) / FOB × 100</span><small>기준: {thresholdLabel}{target !== undefined && localRvc !== undefined ? ` · ${localRvc >= target ? "기준 충족" : `부족 ${Math.max(0, target - localRvc).toFixed(2)}%p`}` : ""}</small></div>
 
-    <div className="evidence-section"><div className="card-head"><div><p className="eyebrow">STEP 5</p><h3>원산지 증빙 확보 추천</h3></div><button className="secondary" disabled={simulationPending || !recommendation?.recommended_combination?.length} onClick={applyRecommendedSet}><Sparkles size={15}/> 최소 조합 선택</button></div>
+    <div className="evidence-section"><div className="card-head"><div><p className="eyebrow">5단계</p><h3>원산지 증빙 확보 추천</h3></div><button className="secondary" disabled={simulationPending || !recommendation?.recommended_combination?.length} onClick={applyRecommendedSet}><Sparkles size={15}/> 최소 조합 선택</button></div>
       <label className="field scenario-threshold"><span>가정 RVC 기준 (%) — 협정 기준 확인 전 시뮬레이션 전용</span><input type="number" min="0" max="100" step="0.1" placeholder={legalTarget !== undefined ? String(legalTarget) : "기준 미확인"} value={inputs.scenarioThreshold ?? ""} onChange={event => update("scenarioThreshold", event.target.value === "" ? undefined : Math.min(100, Math.max(0, Number(event.target.value))))}/></label>
       {simulationPending && <p className="muted-copy">비용과 적용 규칙을 다시 계산하고 있습니다…</p>}
       {simulationError && <p className="muted-copy">{simulationError}</p>}
@@ -191,7 +191,7 @@ export function FobEvidencePanel({ product, bom, inputs, setInputs }: Props) {
 }
 
 function CostControl({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (value: number) => void }) {
-  return <div className="cost-control"><label>{label} (KRW)</label><input type="range" min="0" max={max} step="1000" value={Math.min(value, max)} onChange={event => onChange(Number(event.target.value))}/><input type="number" min="0" step="1000" value={value} onChange={event => onChange(Math.max(0, Number(event.target.value)))}/></div>;
+  return <div className="cost-control"><label>{label} (원)</label><input type="range" min="0" max={max} step="1000" value={Math.min(value, max)} onChange={event => onChange(Number(event.target.value))}/><input type="number" min="0" step="1000" value={value} onChange={event => onChange(Math.max(0, Number(event.target.value)))}/></div>;
 }
 
 function EvidenceCheck({ item, checked, onChange }: { item: EvidenceCandidate; checked: boolean; onChange: (checked: boolean) => void }) {
