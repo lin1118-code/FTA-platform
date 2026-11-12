@@ -41,7 +41,7 @@
 ## 기존 모델 저장소
 
 - 완제품 HS: https://github.com/lin1118-code/HS-complete-product
-- 원재료 HS: 저장소 확인 필요
+- 원재료 HS: https://github.com/davidsonny-sketch/fta-oda-hs4-model
 - VNM 분석: 저장소 확인 필요
 
 ## 현재 상태
